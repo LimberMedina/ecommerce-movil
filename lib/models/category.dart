@@ -1,5 +1,3 @@
-// models/category.dart
-
 class Category {
   final int id;
   final String name;
@@ -20,5 +18,15 @@ class Category {
       description: json['description'] ?? '',
       image: json['image'],
     );
+  }
+
+  // ✅ Aquí está el método que te falta
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'description': description,
+      'image': image,
+    };
   }
 }

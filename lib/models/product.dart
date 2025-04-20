@@ -1,5 +1,3 @@
-// models/product.dart
-
 import 'category.dart';
 
 class Product {
@@ -34,5 +32,19 @@ class Product {
       category: Category.fromJson(json['category']),
       createdAt: DateTime.parse(json['created_at']),
     );
+  }
+
+  // ✅ Añadido: método toJson()
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'description': description,
+      'price': price,
+      'stock': stock,
+      'image': image,
+      'category': category.toJson(),
+      'created_at': createdAt.toIso8601String(),
+    };
   }
 }

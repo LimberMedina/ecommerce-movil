@@ -1,52 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../models/product.dart';
-import 'package:mi_tienda/models/category.dart' as model;
-
-class CartItem {
-  final Product product;
-  int quantity;
-
-  CartItem({required this.product, this.quantity = 1});
-
-  double get total => product.price * quantity;
-
-  Map<String, dynamic> toJson() => {
-        'product': {
-          'id': product.id,
-          'name': product.name,
-          'price': product.price,
-          'image': product.image,
-          'stock': product.stock,
-          'category': {
-            'id': product.category.id,
-            'name': product.category.name,
-          },
-        },
-        'quantity': quantity,
-      };
-
-  factory CartItem.fromJson(Map<String, dynamic> json) {
-    return CartItem(
-      product: Product(
-        id: json['product']['id'],
-        name: json['product']['name'],
-        description: '',
-        price: double.parse(json['product']['price'].toString()),
-        stock: json['product']['stock'],
-        image: json['product']['image'],
-        category: model.Category(
-          id: json['product']['category']['id'],
-          name: json['product']['category']['name'],
-          description: '',
-        ),
-        createdAt: DateTime.now(),
-      ),
-      quantity: json['quantity'],
-    );
-  }
-}
+import '../models/cart_item.dart'; // ✅ Usa solo esta clase CartItem
 
 class CartService extends ChangeNotifier {
   static const String _cartKey = 'user_cart';
@@ -83,17 +38,21 @@ class CartService extends ChangeNotifier {
     notifyListeners();
   }
 
-  void addItem(Product product, {int quantity = 1}) {
+  void addItem(product, {int quantity = 1}) {
     final index = _items.indexWhere((item) => item.product.id == product.id);
 
     if (index != -1) {
-      final newQty = _items[index].quantity + quantity;
-      _items[index].quantity = newQty.clamp(1, product.stock);
+      final newQty = (_items[index].quantity + quantity)
+          .clamp(1, product.stock)
+          .toInt(); // 👈 FIX
+      _items[index].quantity = newQty;
     } else {
-      _items.add(CartItem(
-        product: product,
-        quantity: quantity.clamp(1, product.stock),
-      ));
+      _items.add(
+        CartItem(
+          product: product,
+          quantity: quantity.clamp(1, product.stock).toInt(), // 👈 FIX
+        ),
+      );
     }
 
     saveCart();

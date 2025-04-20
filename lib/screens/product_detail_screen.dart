@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/product.dart';
-import '../config/api.dart';
 import '../services/cart_service.dart';
 import '../services/api_service.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final int productId;
 
-  const ProductDetailScreen({Key? key, required this.productId}) : super(key: key);
+  const ProductDetailScreen({Key? key, required this.productId})
+      : super(key: key);
 
   @override
   State<ProductDetailScreen> createState() => _ProductDetailScreenState();
@@ -17,316 +17,304 @@ class ProductDetailScreen extends StatefulWidget {
 class _ProductDetailScreenState extends State<ProductDetailScreen> {
   final ApiService _apiService = ApiService();
   late Future<Product> _productFuture;
+  late Future<List<Product>> _relatedProductsFuture;
 
   @override
   void initState() {
     super.initState();
-    _productFuture = _apiService.getProductById(widget.productId);
+    _loadData();
+  }
+
+  void _loadData() {
+    setState(() {
+      _productFuture = _apiService.getProductById(widget.productId);
+      _relatedProductsFuture = _apiService.getRelatedProducts(widget.productId);
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const CircleAvatar(
-            backgroundColor: Colors.white70,
-            child: Icon(
-              Icons.arrow_back,
-              color: Colors.black87,
+          icon: Container(
+            padding: EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.8),
+              shape: BoxShape.circle,
             ),
+            child: Icon(Icons.arrow_back, color: Colors.black87),
           ),
           onPressed: () => Navigator.pop(context),
         ),
-        actions: [
-          IconButton(
-            icon: const CircleAvatar(
-              backgroundColor: Colors.white70,
-              child: Icon(
-                Icons.share_outlined,
-                color: Colors.black87,
-              ),
-            ),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Función de compartir no implementada'),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-            },
-          ),
-          const SizedBox(width: 8),
-        ],
       ),
       body: FutureBuilder<Product>(
         future: _productFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return Center(child: CircularProgressIndicator());
           } else if (snapshot.hasError) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.error_outline, size: 48, color: Colors.red),
-                  const SizedBox(height: 16),
-                  Text('Error al cargar el producto: ${snapshot.error}'),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      setState(() {
-                        _productFuture = _apiService.getProductById(widget.productId);
-                      });
-                    },
-                    child: const Text('Reintentar'),
-                  ),
-                ],
-              ),
-            );
+            return _buildError(snapshot.error.toString());
           } else if (!snapshot.hasData) {
-            return const Center(child: Text('No se encontró el producto'));
+            return Center(child: Text('No se encontró el producto'));
           }
 
           final product = snapshot.data!;
           final isAvailable = product.stock > 0;
-          
+
           return SingleChildScrollView(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Imagen del producto
-                Hero(
-                  tag: 'product-${product.id}',
-                  child: SizedBox(
-                    height: 300,
-                    width: double.infinity,
-                    child: product.image != null
-                        ? FadeInImage.assetNetwork(
-                            placeholder: 'assets/images/placeholder.png',
-                            image: product.image!.startsWith('http')
-                                ? product.image!
-                                : '${ApiConfig.baseUrl}${product.image}',
-                            fit: BoxFit.cover,
-                            imageErrorBuilder: (context, error, stackTrace) =>
-                                Image.asset(
-                              'assets/images/placeholder.png',
-                              fit: BoxFit.cover,
-                            ),
-                          )
-                        : Image.asset(
-                            'assets/images/placeholder.png',
-                            fit: BoxFit.cover,
-                          ),
-                  ),
-                ),
-
-                // Información del producto
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, -5),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Título y precio
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Nombre del producto
-                          Expanded(
-                            child: Text(
-                              product.name,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 24,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          // Precio
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: colorScheme.primary.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              '\$${product.price.toStringAsFixed(2)}',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 20,
-                                color: colorScheme.primary,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Categoría y disponibilidad
-                      Row(
-                        children: [
-                          // Categoría
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: Colors.grey[200],
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.category_outlined,
-                                  size: 16,
-                                  color: Colors.grey[700],
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  product.category.name,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
-                                    color: Colors.grey[700],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          // Disponibilidad
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: isAvailable
-                                  ? Colors.green[100]
-                                  : Colors.red[100],
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  isAvailable ? Icons.check_circle : Icons.error,
-                                  size: 16,
-                                  color: isAvailable
-                                      ? Colors.green[700]
-                                      : Colors.red[700],
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  isAvailable
-                                      ? 'En stock (${product.stock})'
-                                      : 'Agotado',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
-                                    color: isAvailable
-                                        ? Colors.green[700]
-                                        : Colors.red[700],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-
-                      // Descripción
-                      const Text(
-                        'Descripción',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        product.description ?? 'No hay descripción disponible para este producto.',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.grey[800],
-                          height: 1.5,
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-
-                      // Botón de añadir al carrito
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 54,
-                        child: ElevatedButton.icon(
-                          onPressed: isAvailable
-                              ? () {
-                                  final cartService = Provider.of<CartService>(context, listen: false);
-                                  cartService.addItem(product);
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('${product.name} añadido al carrito'),
-                                      behavior: SnackBarBehavior.floating,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      action: SnackBarAction(
-                                        label: 'Ver carrito',
-                                        onPressed: () {
-                                          Navigator.pushNamed(context, '/cart');
-                                        },
-                                      ),
-                                    ),
-                                  );
-                                }
-                              : null,
-                          icon: Icon(
-                            Icons.shopping_cart,
-                            size: 22,
-                            color: isAvailable ? Colors.white : Colors.grey[400],
-                          ),
-                          label: Text(
-                            isAvailable ? 'Añadir al carrito' : 'No disponible',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: isAvailable
-                                ? colorScheme.primary
-                                : Colors.grey[300],
-                            foregroundColor: Colors.white,
-                            elevation: 2,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                _buildProductImage(product),
+                _buildProductDetails(product, isAvailable, context),
+                _buildRecommendedProducts(),
               ],
             ),
           );
         },
       ),
+    );
+  }
+
+  Widget _buildError(String error) {
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.all(20),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 48, color: Colors.red),
+            SizedBox(height: 16),
+            Text('Error al cargar el producto', style: TextStyle(fontSize: 18)),
+            SizedBox(height: 8),
+            Text(error, textAlign: TextAlign.center),
+            SizedBox(height: 16),
+            FilledButton(
+              onPressed: _loadData,
+              child: Text('Reintentar'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProductImage(Product product) {
+    return Hero(
+      tag: 'product-${product.id}',
+      child: SizedBox(
+        height: 350,
+        width: double.infinity,
+        child: product.image != null
+            ? Image.network(
+                product.image!,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Image.asset(
+                  'assets/images/placeholder.png',
+                  fit: BoxFit.cover,
+                ),
+              )
+            : Image.asset('assets/images/placeholder.png', fit: BoxFit.cover),
+      ),
+    );
+  }
+
+  Widget _buildProductDetails(
+      Product product, bool isAvailable, BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: Offset(0, -5),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  product.name,
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              SizedBox(width: 16),
+              Chip(
+                label: Text(
+                  '\$${product.price.toStringAsFixed(2)}',
+                  style: TextStyle(
+                    color: theme.colorScheme.onPrimary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                backgroundColor: theme.colorScheme.primary,
+              ),
+            ],
+          ),
+          SizedBox(height: 16),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              Chip(
+                label: Text(product.category.name),
+                avatar: Icon(Icons.category_outlined, size: 18),
+              ),
+              Chip(
+                label: Text(
+                    isAvailable ? 'En stock (${product.stock})' : 'Agotado'),
+                avatar: Icon(
+                  isAvailable ? Icons.check_circle : Icons.error,
+                  size: 18,
+                  color: isAvailable ? Colors.green : Colors.red,
+                ),
+                backgroundColor:
+                    isAvailable ? Colors.green.shade100 : Colors.red.shade100,
+              ),
+            ],
+          ),
+          SizedBox(height: 24),
+          Text(
+            'Descripción',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          SizedBox(height: 8),
+          Text(
+            product.description,
+            style: theme.textTheme.bodyLarge,
+          ),
+          SizedBox(height: 32),
+          FilledButton.icon(
+            onPressed: isAvailable
+                ? () {
+                    Provider.of<CartService>(context, listen: false)
+                        .addItem(product);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('${product.name} añadido al carrito'),
+                        action: SnackBarAction(
+                          label: 'Ver carrito',
+                          onPressed: () =>
+                              Navigator.pushNamed(context, '/cart'),
+                        ),
+                      ),
+                    );
+                  }
+                : null,
+            icon: Icon(Icons.shopping_cart),
+            label: Text(isAvailable ? 'Añadir al carrito' : 'No disponible'),
+            style: FilledButton.styleFrom(
+              minimumSize: Size(double.infinity, 50),
+              backgroundColor: isAvailable ? null : Colors.grey,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecommendedProducts() {
+    return FutureBuilder<List<Product>>(
+      future: _relatedProductsFuture,
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || snapshot.data!.isEmpty)
+          return SizedBox.shrink();
+
+        final recommended = snapshot.data!;
+        return Padding(
+          padding: EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'También te podría interesar',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              SizedBox(height: 16),
+              SizedBox(
+                height: 220,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: recommended.length,
+                  itemBuilder: (context, index) {
+                    final product = recommended[index];
+                    return GestureDetector(
+                      onTap: () {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                ProductDetailScreen(productId: product.id),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        width: 160,
+                        margin: EdgeInsets.only(right: 16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: AspectRatio(
+                                aspectRatio: 1,
+                                child: product.image != null
+                                    ? Image.network(
+                                        product.image!,
+                                        fit: BoxFit.cover,
+                                      )
+                                    : Image.asset(
+                                        'assets/images/placeholder.png',
+                                        fit: BoxFit.cover,
+                                      ),
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              product.name,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              '\$${product.price.toStringAsFixed(2)}',
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.primary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
