@@ -1,6 +1,6 @@
 class ApiConfig {
   // Cambia esta URL según tu configuración
-  static const String baseUrl = 'http://192.168.100.84:8000/api';
+  static const String baseUrl = 'http://192.168.1.8:8000/api';
 
   // Endpoints
   static const String products = '/store/products/';

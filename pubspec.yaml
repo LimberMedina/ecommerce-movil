@@ -23,7 +23,7 @@ dependencies:
   intl: ^0.18.1
 
   # Voz
-  speech_to_text: ^6.3.0
+  speech_to_text: ^7.0.0
 
 dev_dependencies:
   flutter_test:
